@@ -402,6 +402,7 @@ midgest_cytokine <- subset(gwas_catalog_filtered,gwas_catalog_filtered$Reported_
 
 setwd("~/Documents/Bioinf/Git_BRB5/")
 
+# these files I sent to Jura Barbitoff for annotation etc (it's LSEA input files)
 write.csv(diab_gest[,c("CHR","COORDINATE","RSID","REF","ALT","PVAL")],"diab_gest.csv",row.names = F)
 write.csv(preterm_birth[,c("CHR","COORDINATE","RSID","REF","ALT","PVAL")],"preterm_birth.csv",row.names = F)
 write.csv(placental_abrup[,c("CHR","COORDINATE","RSID","REF","ALT","PVAL")],"placental_abrup.csv",row.names = F)
