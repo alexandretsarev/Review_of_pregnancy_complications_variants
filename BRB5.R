@@ -404,7 +404,7 @@ gwas_catalog_filtered$CHR <- as.data.frame(str_split_fixed(gwas_catalog_filtered
 gwas_catalog_filtered %>% dplyr::select(c(CHR,COORDINATE,RSID,REF,ALT,PVAL)) %>% unique(.) -> gwas_catalog_filtered_lsea
 
 # Total snp from GWAS Catalog for LSEA
-write.csv(gwas_catalog_filtered_lsea,'~/Documents/Bioinf/BRB5/RESULTS/gwas_catalog_filtered_lsea.csv',row.names = F)
+#write.csv(gwas_catalog_filtered_lsea,'~/Documents/Bioinf/BRB5/RESULTS/gwas_catalog_filtered_lsea.csv',row.names = F)
 
 setwd("~/Documents/Bioinf/BRB5/RESULTS/tables_gwascat/")
 # separated phenotypes for LSEA
@@ -419,6 +419,31 @@ sapply(gwas_traits$Var1,function(x){
   full_name = paste0(noquote(left_name),".csv",collapse = "")
   write.csv(data[,c("CHR","COORDINATE","RSID","REF","ALT","PVAL")],full_name,row.names = F)
 })
+
+"
+After the presentation to Glotov's lab we decided to combine some phenotypes and their variants.
+I got this table from them. 
+"
+glotov_table <- read_excel("Pregnancy.xlsx",col_names = c("N","our_traits","gwas_traits"))
+unique(glotov_table$our_traits) 
+
+
+# These phenotypes were taken under consideration
+diab_gest <- subset(gwas_catalog_filtered,gwas_catalog_filtered$Reported_trait %in% glotov_table$gwas_traits[c(1:6)])
+preterm_birth <- subset(gwas_catalog_filtered,gwas_catalog_filtered$Reported_trait %in% glotov_table$gwas_traits[c(8:16)])
+placental_abrup <- subset(gwas_catalog_filtered,gwas_catalog_filtered$Reported_trait %in% "Placental abruption")
+preeclampsia <- subset(gwas_catalog_filtered,gwas_catalog_filtered$Reported_trait %in% "Preeclampsia")
+midgest_cytokine <- subset(gwas_catalog_filtered,gwas_catalog_filtered$Reported_trait %in%
+                             "Midgestational cytokine/chemokine levels (maternal genetic effect)")
+
+setwd("~/Documents/Bioinf/Git_BRB5/")
+
+write.csv(diab_gest[,c("CHR","COORDINATE","RSID","REF","ALT","PVAL")],"diab_gest.csv",row.names = F)
+write.csv(preterm_birth[,c("CHR","COORDINATE","RSID","REF","ALT","PVAL")],"preterm_birth.csv",row.names = F)
+write.csv(placental_abrup[,c("CHR","COORDINATE","RSID","REF","ALT","PVAL")],"placental_abrup.csv",row.names = F)
+write.csv(preeclampsia[,c("CHR","COORDINATE","RSID","REF","ALT","PVAL")],"preeclampsia.csv",row.names = F)
+write.csv(midgest_cytokine[,c("CHR","COORDINATE","RSID","REF","ALT","PVAL")],"midgest_cytokine.csv",row.names = F)
+
 
 ##############################################################################################################################
 ##############################################################################################################################
