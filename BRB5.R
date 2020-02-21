@@ -1,32 +1,3 @@
-# Какие-то полезные ссылки и слова,ну по которым сходу можно добраться до осложнений беременности... 
-# Maternal Hypothyroidism
-# гестационный диабет, эклампсия
-# preterm labor
-# placental abruption
-# 
-# <https://icd.codes/icd10cm/chapter15>
-# Code Range 	Section Description 
-# O00-O08 	Pregnancy with abortive outcome
-# O09 	Supervision of high risk pregnancy
-# O10-O16 	Edema, proteinuria and hypertensive disorders in pregnancy, childbirth and the puerperium
-# O20-O29 	Other maternal disorders predominantly related to pregnancy
-# O30-O48 	Maternal care related to the fetus and amniotic cavity and possible delivery problems
-# O60-O77 	Complications of labor and delivery
-# O80-O82 	Encounter for delivery
-# O85-O92 	Complications predominantly related to the puerperium
-# O-O9A 	Other obstetric conditions, not elsewhere classified
-# 
-# 
-# 
-# 20002_1559 - self-reported miscarriage
-# 3839 - number of miscarriages
-# 2774 -Ever had stillbirth, spontaneous miscarriage or termination
-# 3829 - Number of stillbirths
-# Они все довольно нулевые в плане наследуемости по оценкам на ukbb
-# Но добавить в датасет их я думаю, можно
-# Я это тебе говорю потому, что как раз глотовцев в первую очередь интересуют как раз miscarriage и termination в этих терминах
-# То есть поскольку они хотят писать этот полуобзор-полуанализ открытых данных
-
 # rename "s/bgz/gz/" *.bgz # one-liner to make .bgz files readable for data.table::fread
 
 setwd("~/Documents/Bioinf/BRB5/")
@@ -55,21 +26,14 @@ library(eulerr)
 
 uk_biobank <- read_excel("UKBB GWAS Imputed v3 - File Manifest Release 20180731.xlsx",
                          sheet = 2,na = "N/A",col_names = T)
-# выкидываю все что без imputed.v3
+# removing all stuff which is not from imputed.v3
 uk_biobank_v3 <- subset(uk_biobank,grepl(uk_biobank$File,pattern="imputed.v3") & uk_biobank$Sex == "female") 
 
-# покопался в данных uk biobank нашел какой-то файл phenotypes.female.tsv
-# там вроде есть коды фенотипов по которым я пробовал сабсетить по ключевым словам 
+# I digged in uk biobank and found phenotypes.female.tsv
+# there are some phenotypes which could be grepped (patterns related to pregnancy problems)
 phenotype_fem <- read.delim("phenotypes.female.tsv")
 
-# # что то связанное с осложнениями при беременности, МОЖНО ДОБАВИТЬ БОЛЬШЕ ДАННЫХ!
-# pregn_prob <- subset(phenotype_fem,grepl(description,pattern = "pregn") | grepl(description,pattern = "labor") |
-#                          grepl(description,pattern = "ypothyroidism") | grepl(description,pattern = "clamps") | 
-#                          grepl(description,pattern = "estational"))
-# 
-# после добавлял в ручную некоторые отдельные коды и в итоге wget'ом выкачал все данные -> my_data
-
-
+# ????
 preg_phen <- read.table("data/my_data.txt",header = F)
 preg_phen$`Phenotype Code` <- gsub(preg_phen$V9,pattern = "\\..*",replacement="")
 colnames(preg_phen)[9] <- "file"
@@ -256,7 +220,7 @@ snp_O69$Dataset <- "O69"
 total <- rbind(snp_O46,snp_O26,snp_I9_HYPTENSPREG,snp_O69)
 write.csv(total,"total_ukbiobank_pregn.csv")
 
-#
+# 
 total <- read.csv("total_ukbiobank_pregn.csv")
 
 variants <- fread("variants.tsv.gz",nrows = 50) # dataset from UKB with metadata for each SNP
