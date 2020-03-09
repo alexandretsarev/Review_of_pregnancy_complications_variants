@@ -246,12 +246,6 @@ ukb_total_lsea_filt %>% dplyr::select(-Dataset) %>% write.csv(.,'UKB_total.csv',
 
 ###################################################################################################################################
 ###################################################################################################################################
-#######       ###    ###     #####    ##      ######         #########       #####      ###           #############################
-#######   ########   ##   #   ###   ###   ##   #####   ###############   ########   ##   ######   #################################
-#######   ##   ####      ###   #   ###   ####   ####         #########   #######   ####   #####   #################################
-#######   ###  #####    #####     ###            #########   #########   ######            ####   #################################
-#######        ######  #######   ###    #####    ###         #########       #   ########   ###   #################################
-###################################################################################################################################
 ###################################################################################################################################
 
 # Now we're working with GWAS Catalog 
@@ -478,3 +472,15 @@ total$COORDINATE <- as.data.frame(str_split_fixed(total$variant,pattern = ":",n=
 # in out dataset all of the MAF < 0.5 that Minor allele could be REF
 colnames(total)[2] <- "REF" 
 total <- total %>% dplyr::select(-minor_AF) %>% dplyr::rename(UKB_dataset = Dataset) 
+as.data.frame(str_split_fixed(total$variant,pattern = ":",n=Inf)) %>% dplyr::rename(L = V3,R = V4) %>% dplyr::select(L,R) %>% 
+  cbind(.,total) -> total
+total$ALT <- ifelse(as.character(total$REF)==as.character(total$L),as.character(total$R),as.character(total$L))
+total %>% dplyr::select(-c(L,R)) -> total
+
+# Printing all tables for each phenotypes
+setwd("~/Documents/Bioinf/Git_BRB5/publication/")
+sapply(total$UKB_dataset,function(x){
+  data <- subset(total,total$UKB_dataset==x)
+  full_name = paste0("ukb_",noquote(x),".csv",collapse = "")
+  write.csv(data[,c("variant","CHR","REF","ALT","COORDINATE","PVAL","UKB_dataset")],full_name,row.names = F)
+})
