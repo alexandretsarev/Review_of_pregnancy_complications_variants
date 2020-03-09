@@ -83,7 +83,7 @@ colnames(preg_phen) <- gsub(colnames(preg_phen),pattern = " ",replacement = "_")
 # this dataframe contains the data (phenotypes)
 # I used for counting SNP with different pval thresholds (-log(p) = [6,7,8]), 
 # lambdaGC, raw and high confident SNP numbers
-fwrite(preg_phen,"preg_phen_snp_lGC.tsv",sep = "\t") 
+#fwrite(preg_phen,"preg_phen_snp_lGC.tsv",sep = "\t") 
 
 #
 preg_phen <- read.table("preg_phen_snp_lGC.tsv",header = T,sep = "\t")
@@ -269,6 +269,9 @@ gwas_catalog <- subset(gwas_catalog,gwas_catalog$Reported_trait %in% gwas_traits
 gwas_catalog <- subset(gwas_catalog, gwas_catalog$Reported_trait %in% gwas_traits$V1 & gwas_catalog$`Trait(s)` %in% gwas_traits$V2)
 gwas_traits <- as.data.frame(table(gwas_catalog$Reported_trait))
 
+
+
+
 # editing of gwas_catalog dataframe 
 gwas_catalog$RSID <- as.data.frame(str_split_fixed(gwas_catalog$Variant_and_risk_allele, pattern = "-",n=Inf))[,1]
 colnames(gwas_catalog)[2] <- "PVAL"
@@ -285,9 +288,8 @@ ggplot(gwas_traits,aes(reorder(Var1,Freq),Freq))+
 
 
 # OUR COLABORATORS ASKED FOR THIS TABLE TO MAKE SOME COMBINATIONS BETWEEN THESE PHENOTYPES
+# so I just printed it and sent them 
 write.csv(gwas_traits,"GWAS_for_collab.csv")
-getwd()
-
 
 # correction PVAL column (making it numeric type)
 d <- as.data.frame(str_split_fixed(gwas_catalog$PVAL,pattern=" x ",Inf))
@@ -319,8 +321,7 @@ gwas_catalog %>%
     } else {
       return("no_data")
     }
-  })
-  ) -> gwas_catalog
+  })) -> gwas_catalog
 
 
 # counting SNPs with manual annotation manual annotation (25 in total)
@@ -332,13 +333,13 @@ gwas_catalog %>%
   filter(grepl(.$Variant_and_risk_allele,pattern='rs')==F) %>% count()
 
 # exporting gwas_catalog to be safe
-write.csv(gwas_catalog,"gwas_catalog_annotated.csv")
+#write.csv(gwas_catalog,"gwas_catalog_annotated.csv")
 # then we manually check the SNPs that have crap in REF/ALT columns (chr etc)
 # adding REF and ALT from GWAS Catalog
 
 # Now preprocessing of variants from gwas catalog for LSEA
 gwas_catalog <- read_excel("gwas_catalog_annotated.xlsx")
-gwas_catalog$Location <- gsub(gwas_catalog$Location,pattern="X",replacement = "23") # заменяю Х хромосому на 23
+gwas_catalog$Location <- gsub(gwas_catalog$Location,pattern="X",replacement = "23") # change name of Х-chromosome to 23
 gwas_catalog$REF <- gwas_catalog$REF_man_corr
 gwas_catalog$REF <- ifelse(is.na(gwas_catalog$REF),
                                     as.character(as.data.frame(str_split_fixed(gwas_catalog$NUC_EXCHANGE,pattern = "/",Inf))[,1]),
@@ -350,18 +351,22 @@ gwas_catalog$ALT <- ifelse(is.na(gwas_catalog$ALT) & gwas_catalog$NUC_EXCHANGE!=
 gwas_catalog$ALT <- ifelse(grepl(gwas_catalog$ALT,pattern='/'),
                                     as.character(as.data.frame(str_split_fixed(gwas_catalog$ALT,pattern = "/",Inf))[,2]),
                                     gwas_catalog$ALT)
+
+# Calculation how many valid and non-valid snp do we have by: 
+# in REF and ALT column must be something, but not "no_data"
 gwas_catalog %>% 
   summarise(non_valid_snp = subset(.,grepl(.$REF,pattern='-') | grepl(.$REF,pattern='no_data') | is.na(.$REF) | 
                                  grepl(.$ALT,pattern='-') | grepl(.$ALT,pattern='no_data') | is.na(.$ALT) |
                                    is.na(.$COORDINATE)) %>% nrow(.), 
             valid_snp = nrow(.)-non_valid_snp,
             total_snp = nrow(.))
-
+# Filtering all valid SNPs to a dataframe 
 gwas_catalog %>%
   filter(.,grepl(.$REF,pattern='-')==F & grepl(.$REF,pattern='no_data')==F & is.na(.$REF)==F &
            grepl(.$ALT,pattern='-')==F & grepl(.$ALT,pattern='no_data')==F & is.na(.$ALT)==F & 
            is.na(.$COORDINATE)==F) -> gwas_catalog_filtered
 
+# Creation of CHR column for typical LSEA input
 gwas_catalog_filtered$CHR <- as.data.frame(str_split_fixed(gwas_catalog_filtered$Location,pattern = ":",Inf))[,1]
 
 # Export gwas catalog snp for LSEA (total and separated by 25 selected phenotypes)
@@ -403,18 +408,15 @@ midgest_cytokine <- subset(gwas_catalog_filtered,gwas_catalog_filtered$Reported_
 setwd("~/Documents/Bioinf/Git_BRB5/")
 
 # these files I sent to Jura Barbitoff for annotation etc (it's LSEA input files)
-write.csv(diab_gest[,c("CHR","COORDINATE","RSID","REF","ALT","PVAL")],"diab_gest.csv",row.names = F)
-write.csv(preterm_birth[,c("CHR","COORDINATE","RSID","REF","ALT","PVAL")],"preterm_birth.csv",row.names = F)
-write.csv(placental_abrup[,c("CHR","COORDINATE","RSID","REF","ALT","PVAL")],"placental_abrup.csv",row.names = F)
-write.csv(preeclampsia[,c("CHR","COORDINATE","RSID","REF","ALT","PVAL")],"preeclampsia.csv",row.names = F)
-write.csv(midgest_cytokine[,c("CHR","COORDINATE","RSID","REF","ALT","PVAL")],"midgest_cytokine.csv",row.names = F)
+#write.csv(diab_gest[,c("CHR","COORDINATE","RSID","REF","ALT","PVAL")],"diab_gest.csv",row.names = F)
+#write.csv(preterm_birth[,c("CHR","COORDINATE","RSID","REF","ALT","PVAL")],"preterm_birth.csv",row.names = F)
+#write.csv(placental_abrup[,c("CHR","COORDINATE","RSID","REF","ALT","PVAL")],"placental_abrup.csv",row.names = F)
+#write.csv(preeclampsia[,c("CHR","COORDINATE","RSID","REF","ALT","PVAL")],"preeclampsia.csv",row.names = F)
+#write.csv(midgest_cytokine[,c("CHR","COORDINATE","RSID","REF","ALT","PVAL")],"midgest_cytokine.csv",row.names = F)
 
-
-##############################################################################################################################
-##############################################################################################################################
-##############################################################################################################################
-##############################################################################################################################
-##############################################################################################################################
+#-----------------------------------------------------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------------------------------------------------------
 # UK Biobank and GWAS comparison
 plot(venn(list("UK Biobank" = unique(ukb_total_lsea_filt$RSID),
                        "GWAS Catalog" = unique(gwas_catalog_filtered$RSID))),
@@ -426,3 +428,53 @@ plot(venn(list("UK Biobank" = unique(ukb_total_lsea_filt$RSID),
              labels = F, 
              legend = list(cex = 1.5), 
              quantities = list(cex = 2.5,font=1)) 
+
+#-----------------------------------------------------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------------------------------------------------------
+# Making tables for a publication
+
+# GWAS dataprocessing 
+
+# Task - working with repeated between the phenotypes SNPs
+rep_gwas_snp <- as.data.frame(table(gwas_catalog_filtered$Variant_and_risk_allele)) %>% 
+  filter(Freq != 1) %>% dplyr::rename(rep_SNP = Var1)
+rep_gwas_snp$RSID <- gsub(rep_gwas_snp$rep_SNP,pattern = "-.*",replacement = "")
+rep_gwas_snp <- 
+  subset(gwas_catalog_filtered,Variant_and_risk_allele %in% rep_gwas_snp$rep_SNP) %>% 
+  dplyr::select(RSID, REF, ALT, CHR,COORDINATE, PVAL,Mapped_gene,Reported_trait,Study_accession) %>% 
+  plyr::join(.,rep_gwas_snp[,-1]) %>% dplyr::rename(Occurence_times_in_GwasCat = Freq) %>% 
+  dplyr::arrange(RSID) %>% 
+  filter(PVAL <= 1e-07)
+# printing long table - no collapsing between repeats
+#write.csv(rep_gwas_snp,"~/Documents/Bioinf/Git_BRB5/publication/repeated_GWAS_long_table.csv",row.names = F)
+
+# collapsing repeats - making short table
+
+rep_gwas_snp %>% 
+  dplyr::group_by(RSID) %>% 
+  dplyr::summarise(Reported_trait = paste(unique(Reported_trait), collapse = ", "),
+                   Study_accession = paste(unique(Study_accession), collapse = ", ")) -> collapsed_rep
+
+rep_gwas_snp_dedup <- rep_gwas_snp[!duplicated(rep_gwas_snp[c(1)]),][,-c(8,9)]
+rep_gwas_snp_dedup <- plyr::join(rep_gwas_snp_dedup,collapsed_rep)
+
+#write.csv(rep_gwas_snp_dedup,"~/Documents/Bioinf/Git_BRB5/publication/repeated_GWAS_short_table.csv",row.names = F)
+
+
+# -----------
+# UKB data processing (here we need to make tables for each phenotype)
+total <- read.csv("total_ukbiobank_pregn.csv")
+#View(table(total$variant)) # all SNPs are unique for each phenotype
+
+total %>% 
+  dplyr::filter(pval <= 1e-07) %>% 
+  dplyr::select(-c(1,5:12)) %>% 
+  dplyr::rename(PVAL = pval) -> total
+total$CHR <- as.data.frame(str_split_fixed(total$variant,pattern = ":",n=2))[,1] %>% gsub(.,pattern = "X",replacement = 23)
+total$COORDINATE <- as.data.frame(str_split_fixed(total$variant,pattern = ":",n=3))[,2]
+# https://docs.google.com/spreadsheets/d/1kvPoupSzsSFBNSztMzl04xMoSC3Kcx3CrjVf4yBmESU/edit#gid=227859291
+# it's written that Minor allele (equal to ref allele when AF > 0.5, otherwise equal to alt allele).
+# in out dataset all of the MAF < 0.5 that Minor allele could be REF
+colnames(total)[2] <- "REF" 
+total <- total %>% dplyr::select(-minor_AF) %>% dplyr::rename(UKB_dataset = Dataset) 
