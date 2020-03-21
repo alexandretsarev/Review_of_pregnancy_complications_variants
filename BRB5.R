@@ -33,14 +33,15 @@ uk_biobank_v3 <- subset(uk_biobank,grepl(uk_biobank$File,pattern="imputed.v3") &
 # there are some phenotypes which could be grepped (patterns related to pregnancy problems)
 phenotype_fem <- read.delim("phenotypes.female.tsv")
 
-# ????
+# downloading datasets with wget_data.sh script 
 preg_phen <- read.table("data/my_data.txt",header = F)
 preg_phen$`Phenotype Code` <- gsub(preg_phen$V9,pattern = "\\..*",replacement="")
 colnames(preg_phen)[9] <- "file"
 preg_phen <- plyr::join(preg_phen[,-c(1:8)], uk_biobank_v3[,c(1,2,6)],type="inner")
 
+#rm(uk_biobank,uk_biobank_v3,phenotype_fem)
 
-rm(uk_biobank,uk_biobank_v3,phenotype_fem)
+
 
 "For each dataset it calculates:
 lambdaGC, number of all snp, high confident snp and snp with pval < 1e-06,1e-07,1e-08
@@ -86,7 +87,14 @@ colnames(preg_phen) <- gsub(colnames(preg_phen),pattern = " ",replacement = "_")
 #fwrite(preg_phen,"preg_phen_snp_lGC.tsv",sep = "\t") 
 
 #
-preg_phen <- read.table("preg_phen_snp_lGC.tsv",header = T,sep = "\t")
+preg_phen <- read.table("~/Documents/Bioinf/BRB5_GWAS_PREGNANCY/publication/preg_phen_snp_lGC.tsv",header = T,sep = "\t")
+# add n_controls and n_cases and heritability to the table
+#preg_phen <- plyr::join(preg_phen,phenotype_fem[,c("phenotype","n_cases","n_controls")] %>% dplyr::rename("Phenotype_Code"=phenotype))
+#her <- fread("~/Downloads/ukb31063_h2_topline.02Oct2019.tsv.gz") # heritability dataset UKB
+#preg_phen <- plyr::join(preg_phen,her[,c("phenotype","h2_observed")] %>% dplyr::rename("Phenotype_Code"=phenotype))
+#preg_phen$h2_observed <- round(preg_phen$h2_observed,4)
+#rm(her,phenotype_fem,uk_biobank,uk_biobank_v3)
+#write.table(preg_phen,"~/Documents/Bioinf/BRB5_GWAS_PREGNANCY/publication/preg_phen_snp_lGC.tsv",sep = "\t",row.names = F)
 
 # Visualization of preg_phen (pval < 1e-07)
 plot1 <- ggplot(preg_phen, aes(Phenotype_Code,lambdaGC))+
@@ -460,6 +468,7 @@ rep_gwas_snp_dedup <- plyr::join(rep_gwas_snp_dedup,collapsed_rep)
 # UKB data processing (here we need to make tables for each phenotype)
 total <- read.csv("total_ukbiobank_pregn.csv")
 #View(table(total$variant)) # all SNPs are unique for each phenotype
+total <- plyr::join(total,preg_phen[,c("Phenotype_Code","n_cases","n_controls","h2_observed")] %>% dplyr::rename("Dataset"=Phenotype_Code))
 
 total %>% 
   dplyr::filter(pval <= 1e-07) %>% 
@@ -467,6 +476,7 @@ total %>%
   dplyr::rename(PVAL = pval) -> total
 total$CHR <- as.data.frame(str_split_fixed(total$variant,pattern = ":",n=2))[,1] %>% gsub(.,pattern = "X",replacement = 23)
 total$COORDINATE <- as.data.frame(str_split_fixed(total$variant,pattern = ":",n=3))[,2]
+total$variant <- total$variant %>% gsub("X","23",.) 
 # https://docs.google.com/spreadsheets/d/1kvPoupSzsSFBNSztMzl04xMoSC3Kcx3CrjVf4yBmESU/edit#gid=227859291
 # it's written that Minor allele (equal to ref allele when AF > 0.5, otherwise equal to alt allele).
 # in out dataset all of the MAF < 0.5 that Minor allele could be REF
@@ -478,9 +488,11 @@ total$ALT <- ifelse(as.character(total$REF)==as.character(total$L),as.character(
 total %>% dplyr::select(-c(L,R)) -> total
 
 # Printing all tables for each phenotypes
-setwd("~/Documents/Bioinf/Git_BRB5/publication/")
+
+setwd("~/Documents/Bioinf/BRB5_GWAS_PREGNANCY/publication")
 sapply(total$UKB_dataset,function(x){
   data <- subset(total,total$UKB_dataset==x)
   full_name = paste0("ukb_",noquote(x),".csv",collapse = "")
-  write.csv(data[,c("variant","CHR","REF","ALT","COORDINATE","PVAL","UKB_dataset")],full_name,row.names = F)
+  write.csv(data[,c("variant","CHR","REF","ALT","COORDINATE","PVAL","UKB_dataset","n_cases","n_controls","h2_observed")],full_name,row.names = F)
 })
+
