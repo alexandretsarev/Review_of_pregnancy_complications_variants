@@ -104,12 +104,12 @@ plot1 <- ggplot(preg_phen, aes(Phenotype_Code,lambdaGC))+
   labs(size="Number of significant \nSNP (1-e07)")+
   geom_hline(yintercept = 1)+ylim(limits = c(0.9,1.2))+
   theme_bw()+
-  theme(axis.text.x = element_text(hjust = 1,angle = 45,size = 10,face = "plain"))+
+  theme(axis.text.x = element_text(hjust = 1,angle = 45,size = 10,face = "bold"))+
   scale_size_continuous(range = c(1.5,8))+ylim(NA,1.05)
 plot1
 # ggplotly for more convinient analysis (to see Phenotype_Code, Phenotype_Description and number of snp with the correspoding threshold)
 ggplotly(plot1,tooltip = c("Phenotype_Code","description","snp"))
-
+  
 # Visualization of preg_phen (pval < 1e-08)
 plot2 <- ggplot(preg_phen, aes(Phenotype_Code,lambdaGC))+
   geom_point(aes(size=as.numeric(preg_phen$log10_P8),description = Phenotype_Description, snp = log10_P8),col=brewer.pal(7,"Dark2")[3],alpha=0.9)+
@@ -118,7 +118,7 @@ plot2 <- ggplot(preg_phen, aes(Phenotype_Code,lambdaGC))+
   labs(size="Number of significant \nSNP (1-e08)")+
   geom_hline(yintercept = 1)+ylim(limits = c(0.9,1.2))+
   theme_bw()+
-  theme(axis.text.x = element_text(hjust = 1,angle = 45,size = 10,face = "plain"))+
+  theme(axis.text.x = element_text(hjust = 1,angle = 45,size = 10,face = "bold"))+
   scale_size_continuous(range = c(1.5,8))+ylim(NA,1.05)
 plot2
 ggplotly(plot2,tooltip = c("Phenotype Code","description","snp"))
@@ -230,7 +230,7 @@ write.csv(total,"total_ukbiobank_pregn.csv")
 
 # 
 total <- read.csv("total_ukbiobank_pregn.csv")
-
+total$variant %>% unique(.) %>% length(.)
 variants <- fread("variants.tsv.gz",nrows = 50) # dataset from UKB with metadata for each SNP
 plyr::join(total,variants[,c(1:9)],type="inner") -> total
 rm(variants)
@@ -362,6 +362,7 @@ gwas_catalog %>%
                                    is.na(.$COORDINATE)) %>% nrow(.), 
             valid_snp = nrow(.)-non_valid_snp,
             total_snp = nrow(.))
+
 # Filtering all valid SNPs to a dataframe 
 gwas_catalog %>%
   filter(.,grepl(.$REF,pattern='-')==F & grepl(.$REF,pattern='no_data')==F & is.na(.$REF)==F &
@@ -373,7 +374,10 @@ gwas_catalog_filtered$CHR <- as.data.frame(str_split_fixed(gwas_catalog_filtered
 
 # Export gwas catalog snp for LSEA (total and separated by 25 selected phenotypes)
 gwas_catalog_filtered %>% dplyr::select(c(CHR,COORDINATE,RSID,REF,ALT,PVAL)) %>% unique(.) -> gwas_catalog_filtered_lsea
-
+colnames(gwas_catalog_filtered)
+gwas_catalog_filtered %>% dplyr::filter(PVAL < 1e-7) %>% 
+  dplyr::select(c(CHR,COORDINATE,RSID,REF,ALT,PVAL,Mapped_gene,"Reported_trait")) -> gwas_catalog_filtered_pval
+write.table(gwas_catalog_filtered_pval,"~/Documents/Bioinf/BRB5_GWAS_PREGNANCY/publication/gwas_catalog_filtered_pval.tsv",row.names = F,sep = "\t")
 # Total snp from GWAS Catalog for LSEA
 #write.csv(gwas_catalog_filtered_lsea,'~/Documents/Bioinf/BRB5/RESULTS/gwas_catalog_filtered_lsea.csv',row.names = F)
 
@@ -406,6 +410,8 @@ placental_abrup <- subset(gwas_catalog_filtered,gwas_catalog_filtered$Reported_t
 preeclampsia <- subset(gwas_catalog_filtered,gwas_catalog_filtered$Reported_trait %in% "Preeclampsia")
 midgest_cytokine <- subset(gwas_catalog_filtered,gwas_catalog_filtered$Reported_trait %in%
                              "Midgestational cytokine/chemokine levels (maternal genetic effect)")
+
+
 
 setwd("~/Documents/Bioinf/Git_BRB5/")
 
@@ -468,11 +474,12 @@ rep_gwas_snp_dedup <- plyr::join(rep_gwas_snp_dedup,collapsed_rep)
 # UKB data processing (here we need to make tables for each phenotype)
 total <- read.csv("total_ukbiobank_pregn.csv")
 #View(table(total$variant)) # all SNPs are unique for each phenotype
-total <- plyr::join(total,preg_phen[,c("Phenotype_Code","n_cases","n_controls","h2_observed")] %>% dplyr::rename("Dataset"=Phenotype_Code))
+# total <- plyr::join(total,preg_phen[,c("Phenotype_Code","n_cases","n_controls","h2_observed")] %>% dplyr::rename("Dataset"=Phenotype_Code)) %>% .[,-(1:2)]
+# write.csv(total,"total_ukbiobank_pregn.csv",row.names = F)
 
 total %>% 
   dplyr::filter(pval <= 1e-07) %>% 
-  dplyr::select(-c(1,5:12)) %>% 
+  dplyr::select(-c(4:11)) %>% 
   dplyr::rename(PVAL = pval) -> total
 total$CHR <- as.data.frame(str_split_fixed(total$variant,pattern = ":",n=2))[,1] %>% gsub(.,pattern = "X",replacement = 23)
 total$COORDINATE <- as.data.frame(str_split_fixed(total$variant,pattern = ":",n=3))[,2]
@@ -487,12 +494,42 @@ as.data.frame(str_split_fixed(total$variant,pattern = ":",n=Inf)) %>% dplyr::ren
 total$ALT <- ifelse(as.character(total$REF)==as.character(total$L),as.character(total$R),as.character(total$L))
 total %>% dplyr::select(-c(L,R)) -> total
 
+
+# add mapping information from Yura (+- 50kb)
+map_ukb <- fread('~/Documents/Bioinf/BRB5/UKB_intervals_gene_names/UKB_all.intervals_gene_names.tsv')
+colnames(map_ukb) <- c("CHR","start","end","variants","mapped_elements")
+map_ukb$CHR %>% gsub("X","23",.) -> map_ukb$CHR
+map_ukb$variants %>% gsub("X","23",.) -> map_ukb$variants
+
+total$mapped_elements <- pbsapply(total$variant,function(x){
+  data <- subset(map_ukb,grepl(x,map_ukb$variants))
+  return(data$mapped_elements)
+})
+total$mapped_elements %>% gsub("character\\(0\\)","NO",.)->total$mapped_elements 
+
+write.table(total[,c("variant","CHR","REF","ALT","COORDINATE","PVAL","mapped_elements","UKB_dataset","n_cases","n_controls","h2_observed")],
+            sep = "\t",row.names = F,file = "~/Documents/Bioinf/BRB5_GWAS_PREGNANCY/publication/ukb_all_phen_pval_07.tsv",quote = F)
+
 # Printing all tables for each phenotypes
 
 setwd("~/Documents/Bioinf/BRB5_GWAS_PREGNANCY/publication")
 sapply(total$UKB_dataset,function(x){
   data <- subset(total,total$UKB_dataset==x)
   full_name = paste0("ukb_",noquote(x),".csv",collapse = "")
-  write.csv(data[,c("variant","CHR","REF","ALT","COORDINATE","PVAL","UKB_dataset","n_cases","n_controls","h2_observed")],full_name,row.names = F)
+  write.csv(data[,c("variant","CHR","REF","ALT","COORDINATE","PVAL","mapped_elements","UKB_dataset","n_cases","n_controls","h2_observed")],
+            full_name,row.names = F,quote = F)
 })
+
+
+
+
+
+
+
+
+
+
+
+
+
 
