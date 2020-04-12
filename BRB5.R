@@ -377,7 +377,10 @@ gwas_catalog_filtered %>% dplyr::select(c(CHR,COORDINATE,RSID,REF,ALT,PVAL)) %>%
 colnames(gwas_catalog_filtered)
 gwas_catalog_filtered %>% dplyr::filter(PVAL < 1e-7) %>% 
   dplyr::select(c(CHR,COORDINATE,RSID,REF,ALT,PVAL,Mapped_gene,"Reported_trait")) -> gwas_catalog_filtered_pval
-write.table(gwas_catalog_filtered_pval,"~/Documents/Bioinf/BRB5_GWAS_PREGNANCY/publication/gwas_catalog_filtered_pval.tsv",row.names = F,sep = "\t")
+gwas_catalog_filtered %>% dplyr::filter(PVAL < 1e-5) %>% 
+  dplyr::select(c(CHR,COORDINATE,RSID,REF,ALT,PVAL,Mapped_gene,"Reported_trait")) -> gwas_catalog_filtered_pval_2
+write.table(gwas_catalog_filtered_pval,"~/Documents/Bioinf/BRB5_GWAS_PREGNANCY/publication/gwas_catalog_filtered_pval_07.tsv",row.names = F,sep = "\t")
+write.table(gwas_catalog_filtered_pval_2,"~/Documents/Bioinf/BRB5_GWAS_PREGNANCY/publication/gwas_catalog_filtered_pval_05.tsv",row.names = F,sep = "\t")
 # Total snp from GWAS Catalog for LSEA
 #write.csv(gwas_catalog_filtered_lsea,'~/Documents/Bioinf/BRB5/RESULTS/gwas_catalog_filtered_lsea.csv',row.names = F)
 
@@ -443,11 +446,13 @@ plot(venn(list("UK Biobank" = unique(ukb_total_lsea_filt$RSID),
 # Making tables for a publication
 
 # GWAS dataprocessing 
-
 # Task - working with repeated between the phenotypes SNPs
-rep_gwas_snp <- as.data.frame(table(gwas_catalog_filtered$Variant_and_risk_allele)) %>% 
-  filter(Freq != 1) %>% dplyr::rename(rep_SNP = Var1)
+
+rep_gwas_snp <- table(unique(gwas_catalog_filtered)[,c(1,11)]) %>% as.data.frame(.) %>% 
+  filter(Freq != 1) %>% filter(Freq != 0) %>% dplyr::rename(rep_SNP = 1)
 rep_gwas_snp$RSID <- gsub(rep_gwas_snp$rep_SNP,pattern = "-.*",replacement = "")
+rep_gwas_snp <-plyr::join(rep_gwas_snp,gwas_catalog_filtered[,c("RSID","REF","ALT","COORDINATE","PVAL","Mapped_gene","Reported_trait","Trait(s)")],type="left")
+colnames()
 rep_gwas_snp <- 
   subset(gwas_catalog_filtered,Variant_and_risk_allele %in% rep_gwas_snp$rep_SNP) %>% 
   dplyr::select(RSID, REF, ALT, CHR,COORDINATE, PVAL,Mapped_gene,Reported_trait,Study_accession) %>% 
@@ -509,6 +514,42 @@ total$mapped_elements %>% gsub("character\\(0\\)","NO",.)->total$mapped_elements
 
 write.table(total[,c("variant","CHR","REF","ALT","COORDINATE","PVAL","mapped_elements","UKB_dataset","n_cases","n_controls","h2_observed")],
             sep = "\t",row.names = F,file = "~/Documents/Bioinf/BRB5_GWAS_PREGNANCY/publication/ukb_all_phen_pval_07.tsv",quote = F)
+
+#------------------------------------------------------------------------------------------------------
+# add information with pval 1e-05
+total <- read.csv("total_ukbiobank_pregn.csv")
+#View(table(total$variant)) # all SNPs are unique for each phenotype
+# total <- plyr::join(total,preg_phen[,c("Phenotype_Code","n_cases","n_controls","h2_observed")] %>% dplyr::rename("Dataset"=Phenotype_Code)) %>% .[,-(1:2)]
+# write.csv(total,"total_ukbiobank_pregn.csv",row.names = F)
+
+total %>% 
+  dplyr::filter(pval <= 1e-05) %>% 
+  dplyr::select(-c(4:11)) %>% 
+  dplyr::rename(PVAL = pval) -> total
+total$CHR <- as.data.frame(str_split_fixed(total$variant,pattern = ":",n=2))[,1] %>% gsub(.,pattern = "X",replacement = 23)
+total$COORDINATE <- as.data.frame(str_split_fixed(total$variant,pattern = ":",n=3))[,2]
+total$variant <- total$variant %>% gsub("X","23",.) 
+# https://docs.google.com/spreadsheets/d/1kvPoupSzsSFBNSztMzl04xMoSC3Kcx3CrjVf4yBmESU/edit#gid=227859291
+# it's written that Minor allele (equal to ref allele when AF > 0.5, otherwise equal to alt allele).
+# in out dataset all of the MAF < 0.5 that Minor allele could be REF
+colnames(total)[2] <- "REF" 
+total <- total %>% dplyr::select(-minor_AF) %>% dplyr::rename(UKB_dataset = Dataset) 
+as.data.frame(str_split_fixed(total$variant,pattern = ":",n=Inf)) %>% dplyr::rename(L = V3,R = V4) %>% dplyr::select(L,R) %>% 
+  cbind(.,total) -> total
+total$ALT <- ifelse(as.character(total$REF)==as.character(total$L),as.character(total$R),as.character(total$L))
+total %>% dplyr::select(-c(L,R)) -> total
+
+
+total$mapped_elements <- pbsapply(total$variant,function(x){
+  data <- subset(map_ukb,grepl(x,map_ukb$variants))
+  return(data$mapped_elements)
+})
+
+# dataset for doannotation
+need_annotation <- subset(total,total$mapped_elements=="character(0)")
+need_annotation %>% 
+  dplyr::select(CHR,COORDINATE,REF,ALT,PVAL) ->need_annotation
+write.table(need_annotation,"~/Downloads/need_annotation.tsv",sep = "\t")
 
 # Printing all tables for each phenotypes
 
