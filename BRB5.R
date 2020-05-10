@@ -226,7 +226,7 @@ snp_O46$Dataset <- "O46"
 snp_O69$Dataset <- "O69" 
 
 total <- rbind(snp_O46,snp_O26,snp_I9_HYPTENSPREG,snp_O69)
-write.csv(total,"total_ukbiobank_pregn.csv")
+#write.csv(total,"total_ukbiobank_pregn.csv")
 
 # 
 total <- read.csv("total_ukbiobank_pregn.csv")
@@ -544,8 +544,11 @@ total$mapped_elements <- pbsapply(total$variant,function(x){
   data <- subset(map_ukb,grepl(x,map_ukb$variants))
   return(data$mapped_elements)
 })
+total <- apply(total,2,as.character)
+write.table(total[,c("variant","CHR","REF","ALT","COORDINATE","PVAL","mapped_elements","UKB_dataset","n_cases","n_controls","h2_observed")],
+            sep = "\t",row.names = F,file = "~/Documents/Bioinf/BRB5_GWAS_PREGNANCY/publication/ukb_all_phen_pval_05.tsv",quote = F)
 
-# dataset for doannotation
+  # dataset for doannotation
 need_annotation <- subset(total,total$mapped_elements=="character(0)")
 need_annotation %>% 
   dplyr::select(CHR,COORDINATE,REF,ALT,PVAL) ->need_annotation
